@@ -1,6 +1,7 @@
 import pygame
 import sys
 from menu import *
+from gameObjects import *
 
 class Game():
     WINDOW_SIZE = (720, 720)
@@ -16,6 +17,7 @@ class Game():
         self.window = pygame.display.set_mode(Game.WINDOW_SIZE)
         self.menu_list = [MainMenu(self), OptionsMenu(self), CreditsMenu(self)]
         self.menu = self.menu_list[0]
+        self.player = Player(self, (360, 360))
 
     def game_loop(self):
         self.fpsClock.tick(120)
@@ -25,11 +27,14 @@ class Game():
             self.menu.display_menu()
         else:
             self.check_controls()
-            self.window.fill((50, 50, 250))
+
+            self.player.update()
+
+            self.window.fill((50, 150, 50))
+            Entity.drawAll()
             pygame.display.flip()
 
     def check_controls(self):
-        # TODO hande game controls here
         if pygame.K_ESCAPE in self.keys:
             self.playing = False
             self.keys.remove(pygame.K_ESCAPE)

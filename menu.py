@@ -37,6 +37,10 @@ class MainMenu(Menu):
                     else:
                         self.choice += 1
                 if event.key == pygame.K_RETURN:
+                    if self.choice == 0:
+                        self.options[0] = 'Resume'
+                        self.show = False
+                        self.game.playing = True
                     if self.choice == 3:
                         sys.exit()
                     self.game.menu = self.game.menu_list[self.choice]
