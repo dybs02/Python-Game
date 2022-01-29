@@ -27,10 +27,10 @@ class Game():
             self.menu.display_menu()
         else:
             self.check_controls()
+            self.window.fill((50, 150, 50))
+
 
             self.player.update()
-
-            self.window.fill((50, 150, 50))
             Entity.drawAll()
             pygame.display.flip()
 

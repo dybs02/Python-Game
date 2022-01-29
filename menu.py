@@ -25,13 +25,12 @@ class MainMenu(Menu):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.show = False
-                    # self.game.playing = True
-                if event.key == pygame.K_UP:
+                if event.key in [pygame.K_UP, pygame.K_w]:
                     if self.choice == 0:
                         self.choice = len(self.options)-1
                     else:
                         self.choice -= 1
-                if event.key == pygame.K_DOWN:
+                if event.key in [pygame.K_DOWN, pygame.K_s]:
                     if self.choice == len(self.options)-1:
                         self.choice = 0
                     else:
