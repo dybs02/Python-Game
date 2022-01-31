@@ -1,5 +1,6 @@
 import pygame, os, sys
 import math
+from random import randint
 
 def get_path(*args):
     return os.path.join(os.path.dirname(__file__), *args)
@@ -42,6 +43,10 @@ class Player(Entity):
         self.gun = self.guns[0]
 
     def update(self):
+        self.run()
+        self.gun.update()
+
+    def run(self):
         previous_facing = self.facing
         player_move_value = [0, 0]
 
@@ -66,14 +71,6 @@ class Player(Entity):
             self.image = pygame.transform.flip(self.image, True, False)
         self.move_by(player_move_value)
 
-
-        if pygame.K_1 in self.game.keys:
-            self.gun = self.guns[0]
-        if pygame.K_2 in self.game.keys:
-            self.gun = self.guns[1]
-
-        self.gun.update()
-
 class Gun():
     bullets = []
 
@@ -85,12 +82,17 @@ class Gun():
         self.bullet_speed = bullet_speed
 
     def update(self):
+        if pygame.K_1 in self.game.keys:
+            self.player.gun = self.player.guns[0]
+        if pygame.K_2 in self.game.keys:
+            self.player.gun = self.player.guns[1]
         self.shoot()
         Bullet.update()
 
     def shoot(self):
         if self.game.mouse_buttons[0]:
             if self.delay < 0:
+                Zombie(self.game)
                 Bullet(self.game, (self.player.x, self.player.y), self.game.mouse_pos, self.bullet_speed)
                 self.delay = self.delay_value
         self.delay -= 1
@@ -111,19 +113,66 @@ class Bullet():
         Bullet.bullets.append(self)
 
     @classmethod
+    def reset(cls):
+        Bullet.bullets.clear()
+
+    @classmethod
     def update(cls):
         for bullet in Bullet.bullets:
 
             bullet.x += bullet.x_speed
             bullet.y -= bullet.y_speed
-            bullet.rect = (bullet.x, bullet.y)
+            bullet.rect.topleft = (bullet.x, bullet.y)
 
             if  1500 < bullet.x or bullet.x < -10 or 1500 < bullet.y or bullet.y < -10:
                 Bullet.bullets.remove(bullet)
+
+        Zombie.update()
         Bullet.drawAll()
 
     @classmethod
     def drawAll(cls):
-        print(f'Number of instances = {sys.getrefcount(Bullet)}')
         for bullet in Bullet.bullets:
             bullet.game.window.blit(Bullet.image, bullet.rect)
+
+class Zombie(Entity):
+    zombies = []
+
+    def __init__(self, game):
+        print(f'Number of instances = {sys.getrefcount(Zombie)}')
+        pos = (randint(0, 720), randint(0, 720))
+        Entity.__init__(self, game, pos)
+        self.image = pygame.image.load(get_path("images", "zombie.png"))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (self.x, self.y)
+        Zombie.zombies.append(self)
+
+    @classmethod
+    def reset(cls):
+        for z in Zombie.zombies:
+            Zombie.zombies.remove(z)
+            Entity.Entities.remove(z)
+
+
+    @classmethod
+    def update(cls):
+        for z in Zombie.zombies:
+            for b in Bullet.bullets:
+                if z.rect.colliderect(b.rect):
+                    Zombie.zombies.remove(z)
+                    Entity.Entities.remove(z)
+                    Bullet.bullets.remove(b)
+
+        cls.move()
+    
+    @classmethod
+    def move(cls):
+        for z in Zombie.zombies:
+            if z.rect.colliderect(z.game.player.rect):
+                z.game.lost = True
+                return
+
+            dy, dx = z.game.player.y-z.y, z.game.player.x-z.x
+            r = math.hypot(dx, dy)
+            value = ((dx/r), (dy/r))
+            z.move_by(value)
