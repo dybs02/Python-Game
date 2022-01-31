@@ -1,6 +1,7 @@
 from game import Game
 
-g = Game()
+if __name__ == '__main__':
+    g = Game()
 
-while True:
-    g.game_loop()
+    while True:
+        g.game_loop()
