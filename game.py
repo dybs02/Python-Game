@@ -11,6 +11,7 @@ class Game():
         pygame.init()
         self.fpsClock = pygame.time.Clock()
         self.playing = False
+        self.lost = False
         self.keys = []
         self.mouse_buttons = [None, None, None, None, None]
         self.mouse_pos = (0, 0)
@@ -29,10 +30,12 @@ class Game():
             self.check_controls()
             self.window.fill((50, 150, 50))
 
-
             self.player.update()
             Entity.drawAll()
             pygame.display.flip()
+
+            if self.lost:
+                self.reset()
 
     def check_controls(self):
         if pygame.K_ESCAPE in self.keys:
@@ -63,3 +66,13 @@ class Game():
         text_rect = text_surface.get_rect()
         text_rect.center = position
         self.window.blit(text_surface,text_rect)
+
+    def reset(self):
+        self.lost = False
+        self.playing = False
+        self.keys.clear()
+        Zombie.reset()
+        Bullet.reset()
+        self.player.__init__(self, (360, 360))
+        self.menu = self.menu_list[0]
+        self.menu.options[0] = 'Start Game'
