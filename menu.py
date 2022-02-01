@@ -114,3 +114,28 @@ class OptionsMenu(Menu):
             self.game.draw_text('Volume: =====--------', 20, (self.mid_x, self.mid_y - 50), (50, 255, 50))
 
             self.draw()
+
+class DeathScreen(Menu):
+
+    def __init__(self, game):
+        Menu.__init__(self, game)
+
+    def check_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    self.game.reset()
+                    self.show = False
+
+    def display_menu(self):
+        self.show = True
+
+        while self.show:
+            self.check_events()
+
+            self.game.draw_text('You Lost !', 40, (self.mid_x, self.mid_y - 100), (255, 0, 0))
+            self.game.draw_text(f'Score: {self.game.player.kills} kills', 30, (self.mid_x, self.mid_y), (150, 0, 0))
+
+            self.draw()

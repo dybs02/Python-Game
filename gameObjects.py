@@ -5,6 +5,20 @@ from random import randint
 def get_path(*args):
     return os.path.join(os.path.dirname(__file__), *args)
 
+def load_animation(flip = False, *path):
+    image_list = []
+    full_path = get_path(*path)
+
+    for file in os.listdir(full_path):
+        if file.endswith(".png"):
+            image = pygame.image.load(os.path.join(full_path, file))
+            if flip:
+                image = pygame.transform.flip(image, True, False)
+            image_list.append(image)
+
+    return image_list
+
+
 class Entity():
     Entities = []
 
@@ -37,14 +51,26 @@ class Player(Entity):
 
     def __init__(self, game, pos):
         Entity.__init__(self, game, pos)
-        self.image = pygame.image.load(get_path("images", "player.png"))
+        self.image_sets = [load_animation(True, 'images', 'playerRunning'), load_animation(False, 'images', 'playerRunning')]
+        self.images = self.image_sets[self.facing]
+        self.current_image = 0
+        self.image = self.images[self.current_image]
         self.rect = self.image.get_rect()
-        self.guns = [Gun(self.game, self, 20, 5), Gun(self.game, self, 8, 4)]
+        self.rect.topleft = pos
+        self.guns = [Gun(self.game, self, 20, 10, 2, 'gunShot.wav'), Gun(self.game, self, 8, 7, 1, 'machineGun.wav')]
         self.gun = self.guns[0]
+        self.kills = 0
 
     def update(self):
+        self.spawn_zombie()
         self.run()
         self.gun.update()
+
+    def spawn_zombie(self):
+        if Zombie.spawn_delay < 0:
+            Zombie.spawn_delay = 30
+            Zombie(self.game)
+        Zombie.spawn_delay -= 1
 
     def run(self):
         previous_facing = self.facing
@@ -63,23 +89,40 @@ class Player(Entity):
                 self.facing = 1
             player_move_value[0] += 1
         if pygame.K_LSHIFT in self.game.keys:
-            self.speed = 2.5
+            self.speed = 2
         else:
             self.speed = 1
 
         if previous_facing != self.facing:
-            self.image = pygame.transform.flip(self.image, True, False)
-        self.move_by(player_move_value)
+            self.images = self.image_sets[self.facing]
+
+        if player_move_value != [0, 0]:
+            if 0 > self.x:
+                player_move_value[0] = 1
+            if self.x > self.game.map_rect[2] - self.rect[2]:
+                player_move_value[0] = -1
+            if 0 > self.y:
+                player_move_value[1] = 1
+            if self.y > self.game.map_rect[3] - self.rect[3]:
+                player_move_value[1] = -1
+
+            self.current_image += 0.05 * self.speed
+            if self.current_image >= len(self.images):
+                self.current_image = 0
+            self.image = self.images[int(self.current_image)]
+            self.move_by(player_move_value)
 
 class Gun():
     bullets = []
 
-    def __init__(self, game, player, delay, bullet_speed):
+    def __init__(self, game, player, delay, bullet_speed, damage, sound):
         self.game = game
         self.player = player
         self.delay_value = delay
         self.delay = delay
         self.bullet_speed = bullet_speed
+        self.damage = damage
+        self.sound = pygame.mixer.Sound(get_path('sounds', sound))
 
     def update(self):
         if pygame.K_1 in self.game.keys:
@@ -92,8 +135,8 @@ class Gun():
     def shoot(self):
         if self.game.mouse_buttons[0]:
             if self.delay < 0:
-                Zombie(self.game)
-                Bullet(self.game, (self.player.x, self.player.y), self.game.mouse_pos, self.bullet_speed)
+                pygame.mixer.Channel(1).play(self.sound)
+                Bullet(self.game, (self.player.x, self.player.y), self.game.mouse_pos, self.bullet_speed, self.damage)
                 self.delay = self.delay_value
         self.delay -= 1
 
@@ -101,7 +144,7 @@ class Bullet():
     bullets = []
     image = pygame.image.load(get_path("images", "bullet.png"))
 
-    def __init__(self, game, pos, m_pos, speed):
+    def __init__(self, game, pos, m_pos, speed, damage):
         self.game = game
         self.rect = self.image.get_rect()
         self.x, self.y = pos
@@ -110,6 +153,7 @@ class Bullet():
         r = math.hypot(dx, dy)
         self.x_speed = (dx/r) * speed
         self.y_speed = (dy/r) * speed
+        self.damage = damage
         Bullet.bullets.append(self)
 
     @classmethod
@@ -136,22 +180,28 @@ class Bullet():
             bullet.game.window.blit(Bullet.image, bullet.rect)
 
 class Zombie(Entity):
+    spawns = ((240, 160), (240, 368), (784, 160), (784, 368))
+    spawn_delay = 30
     zombies = []
 
     def __init__(self, game):
-        print(f'Number of instances = {sys.getrefcount(Zombie)}')
         pos = (randint(0, 720), randint(0, 720))
         Entity.__init__(self, game, pos)
-        self.image = pygame.image.load(get_path("images", "zombie.png"))
+        self.image_sets = [load_animation(True, 'images', 'zombieWalk'), load_animation(False, 'images', 'zombieWalk')]
+        self.images = self.image_sets[self.facing]
+        self.current_image = 0
+        self.image = self.images[self.current_image]
         self.rect = self.image.get_rect()
-        self.rect.topleft = (self.x, self.y)
+        self.rect.midbottom = Zombie.spawns[randint(0, 3)]
+        self.x, self.y = self.rect.topleft
+        self.hp = 2
         Zombie.zombies.append(self)
 
     @classmethod
     def reset(cls):
         for z in Zombie.zombies:
-            Zombie.zombies.remove(z)
             Entity.Entities.remove(z)
+        Zombie.zombies.clear()
 
 
     @classmethod
@@ -159,12 +209,15 @@ class Zombie(Entity):
         for z in Zombie.zombies:
             for b in Bullet.bullets:
                 if z.rect.colliderect(b.rect):
-                    Zombie.zombies.remove(z)
-                    Entity.Entities.remove(z)
+                    z.hp -= b.damage
+                    if z.hp <= 0:
+                        Zombie.zombies.remove(z)
+                        Entity.Entities.remove(z)
+                        z.game.player.kills += 1
                     Bullet.bullets.remove(b)
 
         cls.move()
-    
+
     @classmethod
     def move(cls):
         for z in Zombie.zombies:
@@ -175,4 +228,16 @@ class Zombie(Entity):
             dy, dx = z.game.player.y-z.y, z.game.player.x-z.x
             r = math.hypot(dx, dy)
             value = ((dx/r), (dy/r))
+
+            if value[0] < 0:
+                z.facing = 0
+            else:
+                z.facing = 1
+
+            z.images = z.image_sets[z.facing]
+            z.current_image += 0.05 * z.speed
+            if z.current_image >= len(z.images):
+                z.current_image = 0
+            z.image = z.images[int(z.current_image)]
+
             z.move_by(value)
