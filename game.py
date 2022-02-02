@@ -112,7 +112,7 @@ class Game():
         position : (int, int)
         color : (int, int, int) = (255, 255, 255)
         """
-        font = pygame.font.Font(Game.FONT_NAME, size)
+        font = pygame.font.Font(get_path(Game.FONT_NAME), size)
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect()
         text_rect.center = position
